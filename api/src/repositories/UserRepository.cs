@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using api.src.models;
 using api.src.data;
 
-namespace api.src.services
+namespace api.src.repositories
 {
     public class UserRepository : IUserRepository
     {
@@ -56,6 +56,17 @@ namespace api.src.services
 
             _context.SaveChanges();
             return existingUser;
+        }
+
+        public bool DeleteUser(int id)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.UserId == id);
+            if (user == null)
+                return false;
+
+            _context.Users.Remove(user);
+            _context.SaveChanges();
+            return true;
         }
     }
 }

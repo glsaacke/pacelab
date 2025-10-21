@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using api.src.models;
-using api.src.services;
+using api.src.repositories;
 using Microsoft.Extensions.Logging;
 
 namespace api.core.controllers
@@ -101,6 +101,25 @@ namespace api.core.controllers
             }
             catch(Exception ex){
                 _logger.LogError(ex, "An error occurred while updating user.");
+                throw;
+            }
+        }
+
+        [HttpDelete("DeleteUser/{id}")]
+        public IActionResult DeleteUser(int id)
+        {
+            try{
+                var deleted = _userRepository.DeleteUser(id);
+                if (!deleted)
+                {
+                    _logger.LogWarning("User with id: {Id} not found for deletion", id);
+                    return NotFound(new { Message = "User not found." });
+                }
+
+                return Ok(new { Message = "User deleted successfully." });
+            }
+            catch(Exception ex){
+                _logger.LogError(ex, "An error occurred while deleting user.");
                 throw;
             }
         }

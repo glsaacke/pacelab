@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using api.src.models;
 
-namespace api.src.services
+namespace api.src.repositories
 {
     public interface IStravaTokenRepository
     {

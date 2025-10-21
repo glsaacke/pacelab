@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using api.src.data;
-using api.src.services;
+using api.src.repositories;
 using DotNetEnv;
 
 var root = Directory.GetCurrentDirectory();
@@ -29,6 +29,8 @@ builder.Services.AddDbContext<PaceLabContext>(options =>
 // Register repository (EF Core handles the connection, so we only need the context)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStravaTokenRepository, StravaTokenRepository>();
+builder.Services.AddScoped<IActivityRepository, ActivityRepository>();
+builder.Services.AddScoped<IActivityWeatherRepository, ActivityWeatherRepository>();
 
 var app = builder.Build();
 

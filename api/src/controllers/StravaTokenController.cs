@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using api.src.models;
-using api.src.services;
+using api.src.repositories;
 using Microsoft.Extensions.Logging;
 
 namespace api.core.controllers

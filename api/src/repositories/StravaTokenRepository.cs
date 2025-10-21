@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using api.src.models;
 using api.src.data;
 
-namespace api.src.services
+namespace api.src.repositories
 {
     public class StravaTokenRepository : IStravaTokenRepository
     {
