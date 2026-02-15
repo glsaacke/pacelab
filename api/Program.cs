@@ -1,3 +1,21 @@
+// Load .env file for local development (appsettings.Development.json will override)
+var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envFilePath))
+{
+    var envVars = File.ReadAllLines(envFilePath);
+    foreach (var line in envVars)
+    {
+        if (!string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+        {
+            var parts = line.Split('=', 2);
+            if (parts.Length == 2)
+            {
+                Environment.SetEnvironmentVariable(parts[0], parts[1]);
+            }
+        }
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
