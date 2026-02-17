@@ -45,13 +45,13 @@ public class AuthService
             throw new UnauthorizedAccessException("Invalid email or password");
         }
 
-        // Update last logged in timestamp
+        // Generate JWT token
+        var token = GenerateJwtToken(user);
+
+        // Update last logged in timestamp after successful token generation
         user.LastLoggedIn = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-
-        // Generate JWT token
-        var token = GenerateJwtToken(user);
 
         // Return response with user data (excluding password hash)
         return new AuthResponse
