@@ -55,7 +55,7 @@ public class AuthController : ControllerBase
             // Extract user ID from JWT token claims
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            if (!int.TryParse(userIdClaim, out int userId))
             {
                 return Unauthorized(new { error = "Invalid or missing user ID in token" });
             }

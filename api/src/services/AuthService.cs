@@ -72,7 +72,7 @@ public class AuthService
     }
 
     /// <summary>
-    /// Gets the current user details by userId.
+    /// Gets user details by userId.
     /// </summary>
     /// <param name="userId">The ID of the user to retrieve.</param>
     /// <returns>A UserResponse containing the user data.</returns>
