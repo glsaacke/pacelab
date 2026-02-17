@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using api.src.models.requests;
 using api.src.models.responses;
 using api.src.services;
@@ -41,6 +43,36 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error during user registration");
             return StatusCode(500, new { error = "An error occurred during registration" });
+        }
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<UserResponse>> GetCurrentUser()
+    {
+        try
+        {
+            // Extract user ID from JWT token claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Invalid or missing user ID in token" });
+            }
+
+            var userResponse = await _authService.GetCurrentUserAsync(userId);
+
+            if (userResponse == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            return Ok(userResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving current user");
+            return StatusCode(500, new { error = "An error occurred while retrieving user information" });
         }
     }
 }
