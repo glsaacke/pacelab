@@ -1,0 +1,366 @@
+Complete API Endpoints for PaceLab
+1. Authentication & User Management
+csharp
+// POST /api/auth/register
+// Register new user
+Request: { email, password }
+Response: { user, token }
+
+// POST /api/auth/login
+// Login existing user
+Request: { email, password }
+Response: { user, token }
+
+// POST /api/auth/logout (optional - mostly client-side with JWT)
+// Invalidate token
+Response: 204 No Content
+
+// GET /api/auth/me
+// Get current user info
+Response: { id, email, createdAt, settings }
+
+// POST /api/auth/refresh-token (optional - if using refresh tokens)
+// Get new access token
+Request: { refreshToken }
+Response: { accessToken, refreshToken }
+
+// POST /api/auth/forgot-password (later)
+// Request password reset
+Request: { email }
+Response: 200 OK
+
+// POST /api/auth/reset-password (later)
+// Reset password with token
+Request: { token, newPassword }
+Response: 200 OK
+2. User Settings
+csharp
+// GET /api/user/settings
+// Get user preferences
+Response: { 
+  distanceUnit, 
+  temperatureUnit, 
+  speedFormat, 
+  autoSyncFrequency,
+  syncCycling,
+  syncRunning 
+}
+
+// PUT /api/user/settings
+// Update user preferences
+Request: { distanceUnit, temperatureUnit, ... }
+Response: { updated settings }
+
+// PATCH /api/user/account
+// Update email or password
+Request: { email?, currentPassword?, newPassword? }
+Response: { user }
+
+// DELETE /api/user/account
+// Delete user account
+Response: 204 No Content
+3. Strava Integration
+csharp
+// GET /api/strava/authorize
+// Get Strava OAuth URL
+Response: { authUrl: "https://www.strava.com/oauth/authorize?..." }
+
+// GET /api/strava/callback?code=xxx&state=yyy
+// Handle OAuth callback
+Query: { code, state }
+Response: Redirect to dashboard or { success, user }
+
+// POST /api/strava/disconnect
+// Disconnect Strava account
+Response: 200 OK
+
+// GET /api/strava/status
+// Get connection status
+Response: { 
+  connected: true, 
+  username: "johndoe", 
+  lastSync: "2025-01-15T10:30:00Z",
+  activitiesCount: 127
+}
+
+// POST /api/strava/sync
+// Manually trigger sync
+Response: { 
+  status: "syncing" | "completed",
+  activitiesSynced: 5,
+  activitiesSkipped: 2
+}
+4. Activities - List & Filter
+csharp
+// GET /api/activities
+// Get paginated list of user's activities
+Query: {
+  page?: number (default 1),
+  limit?: number (default 20),
+  type?: "Ride" | "Run" | "all" (default all),
+  sortBy?: "date" | "distance" | "pace" | "adjusted_pace" (default date),
+  sortOrder?: "asc" | "desc" (default desc),
+  startDate?: ISO date,
+  endDate?: ISO date
+}
+Response: {
+  data: [
+    {
+      id, name, type, distanceMeters, movingTimeSeconds,
+      averageSpeedMps, adjustedSpeedMps, startDate,
+      weather: { temperature, windSpeed, ... },
+      adjustmentPct: 2.7
+    }
+  ],
+  page: 1,
+  limit: 20,
+  total: 127,
+  totalPages: 7
+}
+
+// GET /api/activities/recent
+// Get last N activities (for dashboard)
+Query: { count?: number (default 5) }
+Response: [ ...activities ]
+
+// GET /api/activities/summary
+// Get summary stats
+Query: { 
+  period?: "7d" | "30d" | "90d" | "all" (default 30d),
+  type?: "Ride" | "Run" | "all"
+}
+Response: {
+  totalActivities: 45,
+  totalDistance: 820000,  // meters
+  totalTime: 72000,       // seconds
+  averagePace: 5.8,       // m/s
+  averageAdjustedPace: 6.1,
+  totalElevation: 15000
+}
+5. Activities - Individual
+csharp
+// GET /api/activities/:id
+// Get single activity details
+Response: {
+  id, name, type, distanceMeters, movingTimeSeconds,
+  startDate, timezone,
+  startLatitude, startLongitude,
+  endLatitude, endLongitude,
+  polyline,
+  averageSpeedMps, maxSpeedMps,
+  averageHeartrate, maxHeartrate,
+  averageWatts, calories,
+  
+  weather: {
+    temperature, windSpeed, windDirection,
+    humidity, precipitation, condition
+  },
+  
+  adjustments: {
+    adjustedSpeedMps, adjustedTimeSeconds,
+    headwindAdjustment, heatAdjustment,
+    coldAdjustment, rainAdjustment,
+    totalAdjustmentPct, difficultyRating
+  },
+  
+  splits: [
+    { splitNumber, distance, time, pace, elevation }
+  ]
+}
+
+// PUT /api/activities/:id
+// Update activity (name, notes, etc.)
+Request: { name?, notes? }
+Response: { activity }
+
+// DELETE /api/activities/:id
+// Delete single activity
+Response: 204 No Content
+
+// POST /api/activities/:id/recalculate
+// Recalculate adjustments (if you change algorithm)
+Response: { adjustments }
+6. Activities - Bulk Operations
+csharp
+// DELETE /api/activities
+// Delete all activities
+Response: { deletedCount: 127 }
+
+// POST /api/activities/recalculate
+// Recalculate all adjustments
+Response: { updatedCount: 127 }
+
+// POST /api/activities/export
+// Export all activities as CSV/JSON
+Query: { format: "csv" | "json" }
+Response: Download file or { downloadUrl }
+7. Dashboard / Stats
+csharp
+// GET /api/dashboard
+// Get dashboard summary
+Response: {
+  recentActivity: { ...single activity },
+  thisWeek: {
+    activityCount: 3,
+    totalDistance: 95000,
+    totalTime: 10800,
+    averagePace: 5.8
+  },
+  thisMonth: { ... },
+  trainingStreak: {
+    current: 12,
+    longest: 28,
+    activeDays: [dates...]
+  },
+  upcomingGoals: [ ... ] // if you add goals later
+}
+
+// GET /api/stats/performance
+// Get performance over time
+Query: { 
+  period: "7d" | "30d" | "90d" | "365d",
+  type?: "Ride" | "Run" | "all",
+  metric: "pace" | "distance" | "elevation"
+}
+Response: {
+  dataPoints: [
+    { date: "2025-01-01", value: 5.8 },
+    { date: "2025-01-02", value: 6.1 },
+    ...
+  ]
+}
+
+// GET /api/stats/personal-records
+// Get personal bests
+Query: { type?: "Ride" | "Run" | "all" }
+Response: {
+  fastestPace: { activity, value },
+  longestDistance: { activity, value },
+  mostElevation: { activity, value },
+  bestAdjustedEffort: { activity, value }
+}
+8. Sync & Background Jobs
+csharp
+// GET /api/sync/status
+// Get current sync status for user
+Response: {
+  isSyncing: false,
+  lastSync: "2025-01-15T10:30:00Z",
+  lastSyncStatus: "success" | "partial" | "failed",
+  nextScheduledSync: "2025-01-15T10:45:00Z",
+  activitiesSynced: 5
+}
+
+// GET /api/sync/history
+// Get sync history/logs
+Query: { page?: number, limit?: number }
+Response: {
+  data: [
+    {
+      startedAt, completedAt, status,
+      activitiesSynced, errorMessage
+    }
+  ],
+  pagination: { ... }
+}
+
+// POST /api/sync/test
+// Test Strava connection
+Response: { 
+  connected: true, 
+  athleteInfo: { name, id, ... } 
+}
+9. Health Check / Meta
+csharp
+// GET /api/health
+// API health check
+Response: { 
+  status: "healthy",
+  version: "1.0.0",
+  database: "connected",
+  timestamp: "2025-01-15T10:30:00Z"
+}
+
+// GET /api/version
+// Get API version
+Response: { version: "1.0.0", buildDate: "..." }
+```
+
+---
+
+## **Priority Order for Implementation**
+
+### **Phase 1: MVP (Must-have)**
+```
+Authentication:
+✅ POST /api/auth/register
+✅ POST /api/auth/login
+✅ GET /api/auth/me
+
+Strava:
+✅ GET /api/strava/authorize
+✅ GET /api/strava/callback
+✅ POST /api/strava/sync
+✅ GET /api/strava/status
+
+Activities:
+✅ GET /api/activities (list with pagination)
+✅ GET /api/activities/:id (detail view)
+
+Dashboard:
+✅ GET /api/dashboard (basic stats)
+```
+
+### **Phase 2: Core Features**
+```
+Activities:
+✅ GET /api/activities/recent
+✅ DELETE /api/activities/:id
+
+User Settings:
+✅ GET /api/user/settings
+✅ PUT /api/user/settings
+
+Strava:
+✅ POST /api/strava/disconnect
+
+Sync:
+✅ GET /api/sync/status
+```
+
+### **Phase 3: Enhanced Features**
+```
+Activities:
+✅ GET /api/activities/summary
+✅ DELETE /api/activities (bulk)
+✅ PUT /api/activities/:id (update name)
+
+Stats:
+✅ GET /api/stats/performance
+✅ GET /api/stats/personal-records
+
+User:
+✅ PATCH /api/user/account
+✅ POST /api/activities/export
+
+Sync:
+✅ GET /api/sync/history
+```
+
+### **Phase 4: Polish & Nice-to-haves**
+```
+Auth:
+✅ POST /api/auth/refresh-token
+✅ POST /api/auth/forgot-password
+✅ POST /api/auth/reset-password
+
+Activities:
+✅ POST /api/activities/:id/recalculate
+✅ POST /api/activities/recalculate (bulk)
+
+User:
+✅ DELETE /api/user/account
+
+Meta:
+✅ GET /api/health
+```
