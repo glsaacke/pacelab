@@ -23,6 +23,51 @@ public class AuthService
     }
 
     /// <summary>
+    /// Authenticates a user by verifying their credentials and generates a JWT token.
+    /// </summary>
+    /// <param name="request">The login request containing user credentials.</param>
+    /// <returns>An AuthResponse containing the user data and JWT token.</returns>
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    {
+        // Find user by email
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
+
+        if (user == null)
+        {
+            throw new UnauthorizedAccessException("Invalid email or password");
+        }
+
+        // Verify password
+        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            throw new UnauthorizedAccessException("Invalid email or password");
+        }
+
+        // Update last logged in timestamp
+        user.LastLoggedIn = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        // Generate JWT token
+        var token = GenerateJwtToken(user);
+
+        // Return response with user data (excluding password hash)
+        return new AuthResponse
+        {
+            User = new UserResponse
+            {
+                UserId = user.UserId,
+                Email = user.Email,
+                CreatedAt = user.CreatedAt,
+                LastLoggedIn = user.LastLoggedIn
+            },
+            Token = token
+        };
+    }
+
+    /// <summary>
     /// Checks if the user already exists, hashes the password, creates a new user record, and generates a JWT token for authentication.
     /// </summary>
     /// <param name="request">The registration request containing user details.</param>
