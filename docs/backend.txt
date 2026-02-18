@@ -1,3 +1,26 @@
+TL;DR
+Build now (MVP - 12 endpoints):
+
+Auth: register, login, me
+Strava: authorize, callback, sync, status
+Activities: list, detail
+Settings: get, update
+Dashboard: summary
+
+Build later (Phase 2 - 8 endpoints):
+
+Activities: recent, delete, update
+Stats: performance, PRs
+Sync: detailed status, history
+Strava: disconnect
+
+Build much later (Phase 3+ - 18+ endpoints):
+
+Everything else (password reset, account management, advanced features)
+
+
+
+
 Complete API Endpoints for PaceLab
 1. Authentication & User Management
 csharp

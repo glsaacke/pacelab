@@ -99,4 +99,6 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving current user");
             return StatusCode(500, new { error = "An error occurred while retrieving user information" });
+        }
+    }
 }
