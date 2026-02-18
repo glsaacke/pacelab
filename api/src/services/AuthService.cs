@@ -117,6 +117,29 @@ public class AuthService
     }
 
     /// <summary>
+    /// Gets user details by userId.
+    /// </summary>
+    /// <param name="userId">The ID of the user to retrieve.</param>
+    /// <returns>A UserResponse containing the user data.</returns>
+    public async Task<UserResponse?> GetCurrentUserAsync(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user == null)
+        {
+            return null;
+        }
+
+        return new UserResponse
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt,
+            LastLoggedIn = user.LastLoggedIn
+        };
+    }
+
+    /// <summary>
     /// Generates a JWT token containing the user's ID and email as claims, signed with a secret key from configuration. The token includes standard claims like issuer, audience, and expiration.
     /// </summary>
     /// <param name="user">The user for whom the token is being generated.</param>

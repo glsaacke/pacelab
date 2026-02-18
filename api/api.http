@@ -4,3 +4,21 @@ GET {{api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# Register a new user
+POST {{api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Password123!"
+}
+
+###
+
+# Get current user details (requires Bearer token from register/login response)
+GET {{api_HostAddress}}/api/auth/me
+Authorization: Bearer <your-jwt-token-here>
+Accept: application/json
+
+###
