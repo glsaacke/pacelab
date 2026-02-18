@@ -46,6 +46,32 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("login")]
+    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
+    {
+        try
+        {
+            // Validate model state (checks data annotations)
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { error = "Invalid input", details = ModelState });
+            }
+
+            var response = await _authService.LoginAsync(request);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Invalid credentials
+            return Unauthorized(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during user login");
+            return StatusCode(500, new { error = "An error occurred during login" });
+        }
+    }
+    
     [Authorize]
     [HttpGet("me")]
     public async Task<ActionResult<UserResponse>> GetCurrentUser()
@@ -73,6 +99,4 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving current user");
             return StatusCode(500, new { error = "An error occurred while retrieving user information" });
-        }
-    }
 }
