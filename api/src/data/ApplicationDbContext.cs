@@ -29,6 +29,14 @@ public class ApplicationDbContext : DbContext
             entity.Property(u => u.CreatedAt).ValueGeneratedNever();
             entity.Property(u => u.UpdatedAt).ValueGeneratedNever();
             entity.Property(u => u.LastLoggedIn).ValueGeneratedNever();
+
+            // Strava fields - nullable, added via migration
+            entity.Property(u => u.StravaUserId).HasColumnName("strava_user_id");
+            entity.HasIndex(u => u.StravaUserId).IsUnique();
+            entity.Property(u => u.StravaAccessToken).HasColumnName("strava_access_token");
+            entity.Property(u => u.StravaRefreshToken).HasColumnName("strava_refresh_token");
+            entity.Property(u => u.StravaTokenExpiresAt).HasColumnName("strava_token_expires_at");
+            entity.Property(u => u.LastStravaSync).HasColumnName("last_strava_sync");
         });
     }
 }

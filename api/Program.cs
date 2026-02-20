@@ -57,6 +57,7 @@ builder.Services.AddAuthorization();
 
 // Register services
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddHttpClient<IStravaService, StravaService>();
 
 // Add controllers
 builder.Services.AddControllers();
