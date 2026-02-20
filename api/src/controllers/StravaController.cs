@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using api.src.services;
+using api.src.models.responses;
 
 namespace api.src.controllers;
 
@@ -98,6 +99,55 @@ public class StravaController : ControllerBase
         {
             _logger.LogError(ex, "Unexpected error handling Strava callback for user {UserId}", userId);
             return StatusCode(500, new { error = "An error occurred while connecting your Strava account" });
+        }
+    }
+
+    /// <summary>
+    /// Disconnects the authenticated user's Strava account by removing all tokens and connection data.
+    /// </summary>
+    [Authorize]
+    [HttpDelete("disconnect")]
+    public async Task<ActionResult> Disconnect()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Invalid or missing user ID in token" });
+            }
+
+            await _stravaService.DisconnectAsync(userId);
+            return Ok(new { message = "Strava account disconnected successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disconnecting Strava account");
+            return StatusCode(500, new { error = "An error occurred while disconnecting your Strava account" });
+        }
+    }
+
+    [Authorize]
+    [HttpGet("status")]
+    public async Task<ActionResult<object>> Status()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Invalid or missing user ID in token" });
+            }
+
+            UserStravaStatus connectionStatus = await _stravaService.GetUserStatusAsync(userId);
+            return Ok(new { connectionStatus });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking Strava connection status");
+            return StatusCode(500, new { error = "An error occurred while checking Strava connection status" });
         }
     }
 }

@@ -1,3 +1,5 @@
+using api.src.models.responses;
+
 namespace api.src.services;
 
 public interface IStravaService
@@ -16,4 +18,16 @@ public interface IStravaService
     /// <param name="code">The authorization code from Strava's OAuth callback.</param>
     /// <param name="userId">The authenticated user's ID decoded from the state parameter.</param>
     Task HandleCallbackAsync(string code, int userId);
+
+    /// <summary>
+    /// Disconnects the user's Strava account by removing all tokens and connection data.
+    /// </summary>
+    /// <param name="userId">The authenticated user's ID.</param>
+    Task DisconnectAsync(int userId);
+
+    /// <summary>
+    /// Returns the current Strava connection status for the user.
+    /// </summary>
+    /// <param name="userId">The authenticated user's ID.</param>
+    Task<UserStravaStatus> GetUserStatusAsync(int userId);
 }

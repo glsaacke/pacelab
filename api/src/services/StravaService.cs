@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using api.src.data;
+using api.src.models.entities;
+using api.src.models.responses;
 
 namespace api.src.services;
 
@@ -76,18 +78,41 @@ public class StravaService : IStravaService
         // Exchange authorization code for tokens
         var tokenResponse = await ExchangeCodeForTokensAsync(tokenUrl, clientId, clientSecret, code);
 
-        // Save tokens to the user record
-        var user = await _context.Users.FindAsync(userId)
-            ?? throw new InvalidOperationException($"User {userId} not found");
+        // Upsert the UserStravaConnection record
+        var connection = await _context.UserStravaConnections
+            .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        user.StravaUserId = tokenResponse.Athlete?.Id;
-        user.StravaAccessToken = tokenResponse.AccessToken;
-        user.StravaRefreshToken = tokenResponse.RefreshToken;
-        // Strava returns expires_at as a Unix timestamp (seconds since epoch)
-        user.StravaTokenExpiresAt = DateTimeOffset.FromUnixTimeSeconds(tokenResponse.ExpiresAt).UtcDateTime;
-        user.UpdatedAt = DateTime.UtcNow;
+        if (connection == null)
+        {
+            connection = new UserStravaConnection
+            {
+                UserId = userId,
+                ConnectedAt = DateTime.UtcNow
+            };
+            _context.UserStravaConnections.Add(connection);
+        }
+
+        connection.StravaUserId = tokenResponse.Athlete?.Id;
+        connection.StravaUsername = tokenResponse.Athlete?.Username;
+        connection.StravaAccessToken = tokenResponse.AccessToken;
+        connection.StravaRefreshToken = tokenResponse.RefreshToken;
+        connection.StravaTokenExpiresAt = DateTimeOffset.FromUnixTimeSeconds(tokenResponse.ExpiresAt).UtcDateTime;
+        connection.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task DisconnectAsync(int userId)
+    {
+        var connection = await _context.UserStravaConnections
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        if (connection != null)
+        {
+            _context.UserStravaConnections.Remove(connection);
+            await _context.SaveChangesAsync();
+        }
     }
 
     private async Task<StravaTokenResponse> ExchangeCodeForTokensAsync(
@@ -122,6 +147,25 @@ public class StravaService : IStravaService
         return tokenResponse;
     }
 
+    public async Task<UserStravaStatus> GetUserStatusAsync(int userId)
+    {
+        var connection = await _context.UserStravaConnections
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        if (connection == null)
+        {
+            return new UserStravaStatus { Connected = false };
+        }
+
+        return new UserStravaStatus
+        {
+            Connected = true,
+            StravaUserId = connection.StravaUserId,
+            StravaUsername = connection.StravaUsername,
+            TokenExpiresAt = connection.StravaTokenExpiresAt
+        };
+    }
+
     // Internal DTOs for Strava token response
     private sealed class StravaTokenResponse
     {
@@ -142,5 +186,8 @@ public class StravaService : IStravaService
     {
         [JsonPropertyName("id")]
         public long Id { get; set; }
+
+        [JsonPropertyName("username")]
+        public string? Username { get; set; }
     }
 }
