@@ -30,4 +30,11 @@ public interface IStravaService
     /// </summary>
     /// <param name="userId">The authenticated user's ID.</param>
     Task<UserStravaStatus> GetUserStatusAsync(int userId);
+
+    /// <summary>
+    /// Syncs recent activities from Strava for the authenticated user.
+    /// Fetches activities, checks for duplicates, saves new ones with weather and adjustments.
+    /// </summary>
+    /// <param name="userId">The authenticated user's ID.</param>
+    Task<StravaSyncResult> SyncActivitiesAsync(int userId);
 }

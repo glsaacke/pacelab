@@ -166,6 +166,226 @@ public class StravaService : IStravaService
         };
     }
 
+    public async Task<StravaSyncResult> SyncActivitiesAsync(int userId)
+    {
+        var result = new StravaSyncResult
+        {
+            SyncedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            // 1. Verify user has Strava connected
+            var connection = await _context.UserStravaConnections
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (connection == null)
+            {
+                throw new InvalidOperationException("Strava account is not connected");
+            }
+
+            // 2. Check/refresh Strava token if expired
+            await RefreshTokenIfNeededAsync(connection);
+
+            // 3. Fetch recent activities from Strava API
+            var stravaActivities = await FetchStravaActivitiesAsync(connection.StravaAccessToken);
+            result.ActivitiesFound = stravaActivities.Count;
+
+            // Get user preferences for filtering
+            var prefs = await _context.UserPreferences
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+
+            foreach (var stravaActivity in stravaActivities)
+            {
+                // Filter by activity type based on user preferences
+                if (prefs != null)
+                {
+                    if (stravaActivity.Type == "Ride" && prefs.SyncCycling == false)
+                    {
+                        result.ActivitiesSkipped++;
+                        continue;
+                    }
+                    if (stravaActivity.Type == "Run" && prefs.SyncRunning == false)
+                    {
+                        result.ActivitiesSkipped++;
+                        continue;
+                    }
+                }
+
+                // 4a. Check if already synced (skip duplicates)
+                var exists = await _context.Activities
+                    .AnyAsync(a => a.StravaActivityId == stravaActivity.Id);
+
+                if (exists)
+                {
+                    result.ActivitiesSkipped++;
+                    continue;
+                }
+
+                // 4b. Save activity to database
+                var activity = new Activity
+                {
+                    UserId = userId,
+                    StravaActivityId = stravaActivity.Id,
+                    ActivityType = stravaActivity.Type,
+                    ActivityName = stravaActivity.Name,
+                    StartDate = stravaActivity.StartDate,
+                    Timezone = stravaActivity.Timezone,
+                    DistanceMeters = stravaActivity.Distance,
+                    MovingTimeSeconds = stravaActivity.MovingTime,
+                    ElapsedTimeSeconds = stravaActivity.ElapsedTime,
+                    TotalElevationGain = stravaActivity.TotalElevationGain,
+                    AvgSpeed = stravaActivity.AverageSpeed,
+                    MaxSpeed = stravaActivity.MaxSpeed,
+                    AvgHeartrate = stravaActivity.AverageHeartrate,
+                    MaxHeartrate = stravaActivity.MaxHeartrate,
+                    AvgWatts = stravaActivity.AverageWatts,
+                    Calories = stravaActivity.Calories,
+                    StartLatitude = stravaActivity.StartLatlng?[0],
+                    StartLongitude = stravaActivity.StartLatlng?[1],
+                    EndLatitude = stravaActivity.EndLatlng?[0],
+                    EndLongitude = stravaActivity.EndLatlng?[1],
+                    Polyline = stravaActivity.Map?.SummaryPolyline,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Activities.Add(activity);
+                await _context.SaveChangesAsync(); // Save to get activity ID
+
+                result.ActivitiesSynced++;
+
+                // 4c. Fetch historical weather data (placeholder)
+                if (activity.StartLatitude.HasValue && activity.StartLongitude.HasValue && activity.StartDate.HasValue)
+                {
+                    var weather = await FetchWeatherDataAsync(
+                        activity.StartLatitude.Value,
+                        activity.StartLongitude.Value,
+                        activity.StartDate.Value);
+
+                    if (weather != null)
+                    {
+                        weather.ActivityId = activity.ActivityId;
+                        _context.ActivityWeathers.Add(weather);
+                        result.WeatherFetched++;
+                    }
+                }
+
+                // 4d. Calculate effort adjustments (placeholder)
+                var adjustments = CalculateAdjustments(activity);
+                if (adjustments != null)
+                {
+                    adjustments.ActivityId = activity.ActivityId;
+                    _context.ActivityAdjustments.Add(adjustments);
+                    result.AdjustmentsCalculated++;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            // 5. Update last sync timestamp
+            connection.LastSync = DateTime.UtcNow;
+            connection.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            result.ErrorMessage = ex.Message;
+            return result;
+        }
+    }
+
+    private async Task RefreshTokenIfNeededAsync(UserStravaConnection connection)
+    {
+        // Check if token expires within next hour
+        if (connection.StravaTokenExpiresAt.HasValue &&
+            connection.StravaTokenExpiresAt.Value > DateTime.UtcNow.AddHours(1))
+        {
+            return; // Token still valid
+        }
+
+        var clientId = _configuration["Strava:ClientId"]
+            ?? Environment.GetEnvironmentVariable("Strava__ClientId");
+        var clientSecret = _configuration["Strava:ClientSecret"]
+            ?? Environment.GetEnvironmentVariable("Strava__ClientSecret");
+        var tokenUrl = _configuration["Strava:TokenUrl"]
+            ?? "https://www.strava.com/oauth/token";
+
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+        {
+            throw new InvalidOperationException("Strava client credentials are not configured");
+        }
+
+        var formData = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+            ["refresh_token"] = connection.StravaRefreshToken,
+            ["grant_type"] = "refresh_token"
+        });
+
+        var response = await _httpClient.PostAsync(tokenUrl, formData);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException("Failed to refresh Strava access token");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var tokenResponse = JsonSerializer.Deserialize<StravaTokenResponse>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.AccessToken))
+        {
+            throw new InvalidOperationException("Invalid token refresh response");
+        }
+
+        connection.StravaAccessToken = tokenResponse.AccessToken;
+        connection.StravaRefreshToken = tokenResponse.RefreshToken;
+        connection.StravaTokenExpiresAt = DateTimeOffset.FromUnixTimeSeconds(tokenResponse.ExpiresAt).UtcDateTime;
+        connection.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<List<StravaActivity>> FetchStravaActivitiesAsync(string accessToken)
+    {
+        var url = "https://www.strava.com/api/v3/athlete/activities?per_page=30&page=1";
+
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+
+        var response = await _httpClient.GetAsync(url);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Failed to fetch activities from Strava: {response.StatusCode}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var activities = JsonSerializer.Deserialize<List<StravaActivity>>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return activities ?? new List<StravaActivity>();
+    }
+
+    private async Task<ActivityWeather?> FetchWeatherDataAsync(float lat, float lon, DateTime date)
+    {
+        // TODO: Implement actual weather API integration (OpenWeather, WeatherAPI, etc.)
+        // For now, return null - you'll implement this with your chosen weather provider
+        await Task.CompletedTask;
+        return null;
+    }
+
+    private ActivityAdjustments? CalculateAdjustments(Activity activity)
+    {
+        // TODO: Implement your effort adjustment algorithm
+        // For now, return null - you'll implement the calculation logic
+        return null;
+    }
+
     // Internal DTOs for Strava token response
     private sealed class StravaTokenResponse
     {
@@ -189,5 +409,68 @@ public class StravaService : IStravaService
 
         [JsonPropertyName("username")]
         public string? Username { get; set; }
+    }
+
+    private sealed class StravaActivity
+    {
+        [JsonPropertyName("id")]
+        public long Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = string.Empty;
+
+        [JsonPropertyName("start_date")]
+        public DateTime StartDate { get; set; }
+
+        [JsonPropertyName("timezone")]
+        public string? Timezone { get; set; }
+
+        [JsonPropertyName("distance")]
+        public float Distance { get; set; }
+
+        [JsonPropertyName("moving_time")]
+        public int MovingTime { get; set; }
+
+        [JsonPropertyName("elapsed_time")]
+        public int ElapsedTime { get; set; }
+
+        [JsonPropertyName("total_elevation_gain")]
+        public float TotalElevationGain { get; set; }
+
+        [JsonPropertyName("average_speed")]
+        public float AverageSpeed { get; set; }
+
+        [JsonPropertyName("max_speed")]
+        public float MaxSpeed { get; set; }
+
+        [JsonPropertyName("average_heartrate")]
+        public float? AverageHeartrate { get; set; }
+
+        [JsonPropertyName("max_heartrate")]
+        public float? MaxHeartrate { get; set; }
+
+        [JsonPropertyName("average_watts")]
+        public float? AverageWatts { get; set; }
+
+        [JsonPropertyName("calories")]
+        public float? Calories { get; set; }
+
+        [JsonPropertyName("start_latlng")]
+        public float[]? StartLatlng { get; set; }
+
+        [JsonPropertyName("end_latlng")]
+        public float[]? EndLatlng { get; set; }
+
+        [JsonPropertyName("map")]
+        public StravaMap? Map { get; set; }
+    }
+
+    private sealed class StravaMap
+    {
+        [JsonPropertyName("summary_polyline")]
+        public string? SummaryPolyline { get; set; }
     }
 }

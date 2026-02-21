@@ -150,4 +150,42 @@ public class StravaController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while checking Strava connection status" });
         }
     }
+
+    /// <summary>
+    /// Syncs recent activities from Strava for the authenticated user.
+    /// Fetches activities, checks for duplicates, saves new ones with weather and adjustments.
+    /// </summary>
+    [Authorize]
+    [HttpPost("sync")]
+    public async Task<ActionResult<object>> SyncActivities()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Invalid or missing user ID in token" });
+            }
+
+            var result = await _stravaService.SyncActivitiesAsync(userId);
+
+            if (!string.IsNullOrEmpty(result.ErrorMessage))
+            {
+                return BadRequest(new { error = result.ErrorMessage, result });
+            }
+
+            return Ok(new { message = "Sync completed", result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Strava sync error");
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during Strava sync");
+            return StatusCode(500, new { error = "An error occurred while syncing activities from Strava" });
+        }
+    }
 }
