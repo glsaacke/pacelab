@@ -237,7 +237,7 @@ public class StravaService : IStravaService
                     TotalElevationGain = stravaActivity.TotalElevationGain,
                     AvgSpeed = stravaActivity.AverageSpeed,
                     MaxSpeed = stravaActivity.MaxSpeed,
-                    AvgHeartrate = stravaActivity.AverageHeartrate,
+                    AvgHeartrate = (float?)stravaActivity.AverageHeartrate,
                     MaxHeartrate = stravaActivity.MaxHeartrate,
                     AvgWatts = stravaActivity.AverageWatts,
                     Calories = stravaActivity.Calories,
