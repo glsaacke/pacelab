@@ -79,4 +79,7 @@ public class Activity
 
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
+
+    [Column("altitude")]
+    public float? Altitude { get; set; }
 }

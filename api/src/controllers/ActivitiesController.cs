@@ -13,11 +13,13 @@ namespace api.src.controllers;
 public class ActivitiesController : ControllerBase
 {
     private readonly IActivityService _activityService;
+    private readonly StatsService _statsService;
     private readonly ILogger<ActivitiesController> _logger;
 
-    public ActivitiesController(IActivityService activityService, ILogger<ActivitiesController> logger)
+    public ActivitiesController(IActivityService activityService, StatsService statsService, ILogger<ActivitiesController> logger)
     {
         _activityService = activityService;
+        _statsService = statsService;
         _logger = logger;
     }
 
@@ -181,6 +183,54 @@ public class ActivitiesController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting all activities for user");
             return StatusCode(500, new { error = "An error occurred while deleting activities" });
+        }
+    }
+
+    /// <summary>
+    /// Recalculates the effort adjustment for a specific activity.
+    /// Uses the appropriate calculation method based on activity type (Running or Cycling).
+    /// </summary>
+    /// <param name="activityId">The activity ID to recalculate adjustments for.</param>
+    [HttpPost("{activityId}/RecalculateAdjustment")]
+    public async Task<ActionResult> RecalculateAdjustment(int activityId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { error = "Invalid or missing user ID in token" });
+            }
+
+            // Verify activity exists and belongs to the user
+            var activity = await _activityService.GetActivityByIdAsync(id, userId);
+            if (activity == null)
+            {
+                return NotFound(new { error = "Activity not found" });
+            }
+
+            // Determine activity type and call appropriate calculation method
+            if (string.Equals(activity.ActivityType, "Running", StringComparison.OrdinalIgnoreCase))
+            {
+                await _statsService.CalculateRunningAdjustmentAsync(id);
+                return Ok(new { message = "Running adjustment recalculated successfully" });
+            }
+            else if (string.Equals(activity.ActivityType, "Cycling", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(activity.ActivityType, "Ride", StringComparison.OrdinalIgnoreCase))
+            {
+                await _statsService.CalculateCyclingAdjustmentAsync(id);
+                return Ok(new { message = "Cycling adjustment recalculated successfully" });
+            }
+            else
+            {
+                return BadRequest(new { error = $"Unsupported activity type: {activity.ActivityType}" });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recalculating adjustment for activity {ActivityId}", id);
+            return StatusCode(500, new { error = "An error occurred while recalculating the adjustment" });
         }
     }
 }
