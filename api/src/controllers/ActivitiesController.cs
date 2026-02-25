@@ -204,7 +204,7 @@ public class ActivitiesController : ControllerBase
             }
 
             // Verify activity exists and belongs to the user
-            var activity = await _activityService.GetActivityByIdAsync(id, userId);
+            var activity = await _activityService.GetActivityByIdAsync(activityId, userId);
             if (activity == null)
             {
                 return NotFound(new { error = "Activity not found" });
@@ -213,13 +213,13 @@ public class ActivitiesController : ControllerBase
             // Determine activity type and call appropriate calculation method
             if (string.Equals(activity.ActivityType, "Running", StringComparison.OrdinalIgnoreCase))
             {
-                await _statsService.CalculateRunningAdjustmentAsync(id);
+                await _statsService.CalculateRunningAdjustmentAsync(activityId);
                 return Ok(new { message = "Running adjustment recalculated successfully" });
             }
             else if (string.Equals(activity.ActivityType, "Cycling", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(activity.ActivityType, "Ride", StringComparison.OrdinalIgnoreCase))
             {
-                await _statsService.CalculateCyclingAdjustmentAsync(id);
+                await _statsService.CalculateCyclingAdjustmentAsync(activityId);
                 return Ok(new { message = "Cycling adjustment recalculated successfully" });
             }
             else
@@ -229,7 +229,7 @@ public class ActivitiesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error recalculating adjustment for activity {ActivityId}", id);
+            _logger.LogError(ex, "Error recalculating adjustment for activity {ActivityId}", activityId);
             return StatusCode(500, new { error = "An error occurred while recalculating the adjustment" });
         }
     }
