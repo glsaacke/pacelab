@@ -1,0 +1,33 @@
+.home-container {
+    width: 100%;
+}
+
+.home-section1 {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.home-section1-background {
+    position: absolute;
+    inset: 0;
+    background-image: url('/img/canyon.jpg');
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+}
+
+.home-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.home-body {
+    position: relative;
+    z-index: 1;
+}
