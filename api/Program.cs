@@ -60,6 +60,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<StatsService>();
 builder.Services.AddHttpClient<IStravaService, StravaService>();
+builder.Services.AddScoped<ISyncService, SyncService>();
 
 // Add controllers
 builder.Services.AddControllers();

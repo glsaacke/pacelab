@@ -191,8 +191,9 @@ public class ActivitiesController : ControllerBase
     /// Uses the appropriate calculation method based on activity type (Running or Cycling).
     /// </summary>
     /// <param name="activityId">The activity ID to recalculate adjustments for.</param>
+    [HttpPost("{activityId}/recalculate")]
     [HttpPost("{activityId}/RecalculateAdjustment")]
-    public async Task<ActionResult> RecalculateAdjustment(int activityId)
+    public async Task<ActionResult> Recalculate(int activityId)
     {
         try
         {
@@ -211,7 +212,8 @@ public class ActivitiesController : ControllerBase
             }
 
             // Determine activity type and call appropriate calculation method
-            if (string.Equals(activity.ActivityType, "Running", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(activity.ActivityType, "Running", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(activity.ActivityType, "Run", StringComparison.OrdinalIgnoreCase))
             {
                 await _statsService.CalculateRunningAdjustmentAsync(activityId);
                 return Ok(new { message = "Running adjustment recalculated successfully" });

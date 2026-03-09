@@ -173,6 +173,17 @@ public class StravaService : IStravaService
             SyncedAt = DateTime.UtcNow
         };
 
+        // Create a sync log entry to track this sync operation
+        var syncLog = new SyncLog
+        {
+            UserId = userId,
+            SyncType = "strava",
+            Status = "in_progress",
+            StartedAt = DateTime.UtcNow
+        };
+        _context.SyncLogs.Add(syncLog);
+        await _context.SaveChangesAsync();
+
         try
         {
             // 1. Verify user has Strava connected
@@ -286,12 +297,78 @@ public class StravaService : IStravaService
             // 5. Update last sync timestamp
             connection.LastSync = DateTime.UtcNow;
             connection.UpdatedAt = DateTime.UtcNow;
+
+            // 6. Mark sync log as successful
+            syncLog.Status = "success";
+            syncLog.ActivitiesSynced = result.ActivitiesSynced;
+            syncLog.CompletedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return result;
         }
         catch (Exception ex)
         {
+            result.ErrorMessage = ex.Message;
+
+            // Mark sync log as failed
+            syncLog.Status = "failed";
+            syncLog.ErrorMessage = ex.Message;
+            syncLog.CompletedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return result;
+        }
+    }
+
+    public async Task<SyncTestResult> TestConnectionAsync(int userId)
+    {
+        var result = new SyncTestResult
+        {
+            TestedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            // 1. Check if user has Strava connected
+            var connection = await _context.UserStravaConnections
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (connection == null)
+            {
+                result.StravaConnected = false;
+                result.Success = false;
+                result.ErrorMessage = "Strava account is not connected";
+                return result;
+            }
+
+            result.StravaConnected = true;
+            result.StravaUsername = connection.StravaUsername;
+
+            // 2. Refresh token if needed
+            await RefreshTokenIfNeededAsync(connection);
+
+            // 3. Make a lightweight call to the Strava API to verify the token works
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {connection.StravaAccessToken}");
+
+            var response = await _httpClient.GetAsync("https://www.strava.com/api/v3/athlete");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                result.TokenValid = false;
+                result.Success = false;
+                result.ErrorMessage = $"Strava API returned {(int)response.StatusCode}. Token may be invalid.";
+                return result;
+            }
+
+            result.TokenValid = true;
+            result.Success = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
             result.ErrorMessage = ex.Message;
             return result;
         }

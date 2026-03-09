@@ -37,4 +37,11 @@ public interface IStravaService
     /// </summary>
     /// <param name="userId">The authenticated user's ID.</param>
     Task<StravaSyncResult> SyncActivitiesAsync(int userId);
+
+    /// <summary>
+    /// Verifies the Strava connection is healthy by refreshing the token if needed and
+    /// making a lightweight API call without persisting any data.
+    /// </summary>
+    /// <param name="userId">The authenticated user's ID.</param>
+    Task<SyncTestResult> TestConnectionAsync(int userId);
 }
