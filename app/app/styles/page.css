@@ -6,6 +6,9 @@
     position: relative;
     height: 100vh;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 2px red dashed;
 }
 
 .home-section1-background {
@@ -27,7 +30,117 @@
     z-index: 1;
 }
 
+/* Body */
 .home-body {
     position: relative;
     z-index: 1;
+    padding: 0 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 2vw;
+    gap: 3vh;
+    margin-top: 15vh
+}
+
+.home-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 20px;
+    max-width: 550px;
+}
+
+/* Pace demo cards */
+.home-pace-demo {
+    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.home-pace-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+}
+
+.home-pace-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 16px;
+}
+
+.home-pace-day {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    min-width: 55px;
+}
+
+.home-pace-raw {
+    color: white;
+    font-family: var(--font-inconsolata), monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.home-pace-text {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+}
+
+.home-pace-arrow {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+}
+
+.home-pace-adjusted {
+    color: #2ee8a0;
+    font-family: var(--font-inconsolata), monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+/* CTA button */
+.home-cta {
+    display: inline-block;
+    margin-top: 35px;
+    padding: 16px 32px;
+    background: #2ee8a0;
+    color: #0a0a0a;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.home-cta:hover {
+    background: #26d48e;
+    transform: translateY(-1px);
+}
+
+/* Learn more */
+.home-learn-more {
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    margin-bottom: 30px;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.home-learn-more:hover {
+    color: white;
 }

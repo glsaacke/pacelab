@@ -1,0 +1,25 @@
+.navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 20px 30px;
+    position: relative;
+    z-index: 1;
+}
+
+.navbar-container a {
+    color: white;
+    text-decoration: none;
+}
+
+.navbar-logo {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.navbar-login {
+    font-size: 1rem;
+    font-weight: 400;
+}
